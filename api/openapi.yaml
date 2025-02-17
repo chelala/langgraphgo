@@ -1,0 +1,3327 @@
+openapi: 3.1.0
+info:
+  title: LangGraph Platform
+  version: 0.1.0
+servers:
+- url: /
+tags:
+- description: An assistant is a configured instance of a graph.
+  name: Assistants
+- description: A thread contains the accumulated outputs of a group of runs.
+  name: Threads
+- description: A run is an invocation of a graph / assistant on a thread. It updates
+    the state of the thread.
+  name: Thread Runs
+- description: "A run is an invocation of a graph / assistant, with no state or memory\
+    \ persistence."
+  name: Stateless Runs
+- description: "A cron is a periodic run that recurs on a given schedule. The repeats\
+    \ can be isolated, or share state in a thread"
+  name: Crons (Plus tier)
+- description: Store is an API for managing persistent key-value store (long-term
+    memory) that is available from any thread.
+  name: Store
+paths:
+  /assistants:
+    post:
+      description: |-
+        Create an assistant.
+
+        An initial version of the assistant will be created and the assistant is set to that version. To change versions, use the `POST /assistants/{assistant_id}/latest` endpoint.
+      operationId: create_assistant_assistants_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssistantCreate'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assistant'
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Create Assistant
+      tags:
+      - Assistants
+  /assistants/search:
+    post:
+      description: |-
+        Search for assistants.
+
+        This endpoint also functions as the endpoint to list all assistants.
+      operationId: search_assistants_assistants_search_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssistantSearchRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Assistant'
+                type: array
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Search Assistants
+      tags:
+      - Assistants
+  /assistants/{assistant_id}:
+    delete:
+      description: |-
+        Delete an assistant by ID.
+
+        All versions of the assistant will be deleted as well.
+      operationId: delete_assistant_assistants__assistant_id__delete
+      parameters:
+      - description: The ID of the assistant.
+        explode: false
+        in: path
+        name: assistant_id
+        required: true
+        schema:
+          description: The ID of the assistant.
+          format: uuid
+          title: Assistant ID
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Delete Assistant
+      tags:
+      - Assistants
+    get:
+      description: Get an assistant by ID.
+      operationId: get_assistant_assistants__assistant_id__get
+      parameters:
+      - description: The ID of the assistant.
+        explode: false
+        in: path
+        name: assistant_id
+        required: true
+        schema:
+          description: The ID of the assistant.
+          format: uuid
+          title: Assistant ID
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assistant'
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+      summary: Get Assistant
+      tags:
+      - Assistants
+    patch:
+      description: Update an assistant.
+      operationId: patch_assistant_assistants__assistant_id__patch
+      parameters:
+      - description: The ID of the assistant.
+        explode: false
+        in: path
+        name: assistant_id
+        required: true
+        schema:
+          description: The ID of the assistant.
+          format: uuid
+          title: Assistant ID
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssistantPatch'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assistant'
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Patch Assistant
+      tags:
+      - Assistants
+  /assistants/{assistant_id}/graph:
+    get:
+      description: Get an assistant by ID.
+      operationId: get_assistant_graph_assistants__assistant_id__graph_get
+      parameters:
+      - description: The ID of the assistant.
+        explode: false
+        in: path
+        name: assistant_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/get_assistant_graph_assistants__assistant_id__graph_get_assistant_id_parameter'
+        style: simple
+      - description: "Include graph representation of subgraphs. If an integer value\
+          \ is provided, only subgraphs with a depth less than or equal to the value\
+          \ will be included."
+        explode: true
+        in: query
+        name: xray
+        required: false
+        schema:
+          $ref: '#/components/schemas/Xray'
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  items:
+                    type: object
+                title: Response Get Assistant Graph Assistants  Assistant Id  Graph
+                  Get
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Get Assistant Graph
+      tags:
+      - Assistants
+  /assistants/{assistant_id}/subgraphs:
+    get:
+      description: Get an assistant's subgraphs.
+      operationId: get_assistant_subgraphs_assistants__assistant_id__subgraphs_get
+      parameters:
+      - description: The ID of the assistant.
+        explode: false
+        in: path
+        name: assistant_id
+        required: true
+        schema:
+          format: uuid
+          title: Assistant Id
+          type: string
+        style: simple
+      - description: Recursively retrieve subgraphs of subgraphs.
+        explode: true
+        in: query
+        name: recurse
+        required: false
+        schema:
+          default: false
+          title: Recurse
+          type: boolean
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subgraphs'
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Get Assistant Subgraphs
+      tags:
+      - Assistants
+  /assistants/{assistant_id}/subgraphs/{namespace}:
+    get:
+      description: Get an assistant's subgraphs filtered by namespace.
+      operationId: get_assistant_subgraphs_assistants__assistant_id__subgraphs__namespace__get
+      parameters:
+      - description: The ID of the assistant.
+        explode: false
+        in: path
+        name: assistant_id
+        required: true
+        schema:
+          format: uuid
+          title: Assistant Id
+          type: string
+        style: simple
+      - description: Namespace of the subgraph to filter by.
+        explode: false
+        in: path
+        name: namespace
+        required: true
+        schema:
+          title: Namespace
+          type: string
+        style: simple
+      - description: Recursively retrieve subgraphs of subgraphs.
+        explode: true
+        in: query
+        name: recurse
+        required: false
+        schema:
+          default: false
+          title: Recurse
+          type: boolean
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subgraphs'
+          description: Success
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Get Assistant Subgraphs by Namespace
+      tags:
+      - Assistants
+  /assistants/{assistant_id}/schemas:
+    get:
+      description: Get an assistant by ID.
+      operationId: get_assistant_schemas_assistants__assistant_id__schemas_get
+      parameters:
+      - description: The ID of the assistant.
+        explode: false
+        in: path
+        name: assistant_id
+        required: true
+        schema:
+          description: The ID of the assistant.
+          format: uuid
+          title: Assistant Id
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GraphSchema'
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Get Assistant Schemas
+      tags:
+      - Assistants
+  /assistants/{assistant_id}/versions:
+    post:
+      description: Get all versions of an assistant.
+      operationId: get_assistant_versions_assistants__assistant_id__versions_get
+      parameters:
+      - description: The ID of the assistant.
+        explode: false
+        in: path
+        name: assistant_id
+        required: true
+        schema:
+          description: The ID of the assistant.
+          format: uuid
+          title: Assistant Id
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Assistant'
+                type: array
+          description: Success
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Get Assistant Versions
+      tags:
+      - Assistants
+  /assistants/{assistant_id}/latest:
+    post:
+      description: Set the latest version for an assistant.
+      operationId: set_latest_assistant_version_assistants__assistant_id__versions_post
+      parameters:
+      - description: The ID of the assistant.
+        explode: false
+        in: path
+        name: assistant_id
+        required: true
+        schema:
+          description: The ID of the assistant.
+          format: uuid
+          title: Assistant Id
+          type: string
+        style: simple
+      - description: The version to change to.
+        explode: true
+        in: query
+        name: version
+        required: true
+        schema:
+          description: The version of the assistant to change to.
+          title: Version
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assistant'
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Set Latest Assistant Version
+      tags:
+      - Assistants
+  /threads:
+    post:
+      description: Create a thread.
+      operationId: create_thread_threads_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThreadCreate'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+          description: Success
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Create Thread
+      tags:
+      - Threads
+  /threads/search:
+    post:
+      description: |-
+        Search for threads.
+
+        This endpoint also functions as the endpoint to list all threads.
+      operationId: search_threads_threads_search_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThreadSearchRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Thread'
+                type: array
+          description: Success
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Search Threads
+      tags:
+      - Threads
+  /threads/{thread_id}/state:
+    get:
+      description: |-
+        Get state for a thread.
+
+        The latest state of the thread (i.e. latest checkpoint) is returned.
+      operationId: get_latest_thread_state_threads__thread_id__state_get
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadState'
+          description: Success
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Get Thread State
+      tags:
+      - Threads
+    post:
+      description: Add state to a thread.
+      operationId: update_thread_state_threads__thread_id__state_post
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThreadStateUpdate'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadStateUpdateResponse'
+          description: Success
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Update Thread State
+      tags:
+      - Threads
+  /threads/{thread_id}/state/checkpoint:
+    post:
+      description: Get state for a thread at a specific checkpoint.
+      operationId: post_thread_state_at_checkpoint_threads__thread_id__state__checkpoint_id__get
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThreadStateCheckpointRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadState'
+          description: Success
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Get Thread State At Checkpoint
+      tags:
+      - Threads
+  /threads/{thread_id}/history:
+    get:
+      description: Get all past states for a thread.
+      operationId: get_thread_history_threads__thread_id__history_get
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      - explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 10
+          title: Limit
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: before
+        required: false
+        schema:
+          title: Before
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ThreadState'
+                type: array
+          description: Success
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Get Thread History
+      tags:
+      - Threads
+    post:
+      description: Get all past states for a thread.
+      operationId: get_thread_history_post_threads__thread_id__history_post
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThreadStateSearch'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ThreadState'
+                type: array
+          description: Success
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Get Thread History Post
+      tags:
+      - Threads
+  /threads/{thread_id}/copy:
+    post:
+      description: Create a new thread with a copy of the state and checkpoints from
+        an existing thread.
+      operationId: copy_thread_post_threads__thread_id__copy_post
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+          description: Success
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Copy Thread
+      tags:
+      - Threads
+  /threads/{thread_id}:
+    delete:
+      description: Delete a thread by ID.
+      operationId: delete_thread_threads__thread_id__delete
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Delete Thread
+      tags:
+      - Threads
+    get:
+      description: Get a thread by ID.
+      operationId: get_thread_threads__thread_id__get
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Get Thread
+      tags:
+      - Threads
+    patch:
+      description: Update a thread.
+      operationId: patch_thread_threads__thread_id__patch
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThreadPatch'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Patch Thread
+      tags:
+      - Threads
+  /threads/{thread_id}/runs:
+    get:
+      description: List runs for a thread.
+      operationId: list_runs_http_threads__thread_id__runs_get
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      - explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 10
+          title: Limit
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          title: Offset
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: status
+        required: false
+        schema:
+          enum:
+          - pending
+          - error
+          - success
+          - timeout
+          - interrupted
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Run'
+                type: array
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: List Runs
+      tags:
+      - Thread Runs
+    post:
+      description: "Create a run in existing thread, return the run ID immediately.\
+        \ Don't wait for the final run output."
+      operationId: create_run_threads__thread_id__runs_post
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunCreateStateful'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Create Background Run
+      tags:
+      - Thread Runs
+  /threads/{thread_id}/runs/crons:
+    post:
+      description: Create a cron to schedule runs on a thread.
+      operationId: create_thread_cron_threads__thread_id__runs_crons_post
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CronCreate'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cron'
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Create Thread Cron
+      tags:
+      - Crons (Plus tier)
+  /threads/{thread_id}/runs/stream:
+    post:
+      description: Create a run in existing thread. Stream the output.
+      operationId: stream_run_threads__thread_id__runs_stream_post
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunCreateStateful'
+        required: true
+      responses:
+        "200":
+          content:
+            text/event-stream:
+              schema:
+                description: |-
+                  The server will send a stream of events in SSE format.
+
+                  **Example event**:
+
+                  id: 1
+
+                  event: message
+
+                  data: {}
+                type: string
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: "Create Run, Stream Output"
+      tags:
+      - Thread Runs
+  /threads/{thread_id}/runs/wait:
+    post:
+      description: Create a run in existing thread. Wait for the final output and
+        then return it.
+      operationId: wait_run_threads__thread_id__runs_wait_post
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunCreateStateful'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: "Create Run, Wait for Output"
+      tags:
+      - Thread Runs
+  /threads/{thread_id}/runs/{run_id}:
+    delete:
+      description: Delete a run by ID.
+      operationId: delete_run_threads__thread_id__runs__run_id__delete
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      - description: The ID of the run.
+        explode: false
+        in: path
+        name: run_id
+        required: true
+        schema:
+          description: The ID of the run.
+          format: uuid
+          title: Run Id
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Delete Run
+      tags:
+      - Thread Runs
+    get:
+      description: Get a run by ID.
+      operationId: get_run_http_threads__thread_id__runs__run_id__get
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      - description: The ID of the run.
+        explode: false
+        in: path
+        name: run_id
+        required: true
+        schema:
+          description: The ID of the run.
+          format: uuid
+          title: Run Id
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Get Run
+      tags:
+      - Thread Runs
+  /threads/{thread_id}/runs/{run_id}/join:
+    get:
+      description: Wait for a run to finish.
+      operationId: join_run_http_threads__thread_id__runs__run_id__join_get
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      - description: The ID of the run.
+        explode: false
+        in: path
+        name: run_id
+        required: true
+        schema:
+          description: The ID of the run.
+          format: uuid
+          title: Run Id
+          type: string
+        style: simple
+      - explode: true
+        in: query
+        name: cancel_on_disconnect
+        required: false
+        schema:
+          default: false
+          description: "If true, the run will be cancelled if the client disconnects."
+          title: Cancel on Disconnect
+          type: boolean
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Join Run
+      tags:
+      - Thread Runs
+  /threads/{thread_id}/runs/{run_id}/stream:
+    get:
+      description: Join a run stream. This endpoint streams output in real-time from
+        a run similar to the /threads/__THREAD_ID__/runs/stream endpoint. Only output
+        produced after this endpoint is called will be streamed.
+      operationId: stream_run_http_threads__thread_id__runs__run_id__join_get
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      - description: The ID of the run.
+        explode: false
+        in: path
+        name: run_id
+        required: true
+        schema:
+          description: The ID of the run.
+          format: uuid
+          title: Run Id
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            text/event-stream:
+              schema:
+                description: |-
+                  The server will send a stream of events in SSE format.
+
+                  **Example event**:
+
+                  id: 1
+
+                  event: message
+
+                  data: {}
+                type: string
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Join Run Stream
+      tags:
+      - Thread Runs
+  /threads/{thread_id}/runs/{run_id}/cancel:
+    post:
+      operationId: cancel_run_http_threads__thread_id__runs__run_id__cancel_post
+      parameters:
+      - description: The ID of the thread.
+        explode: false
+        in: path
+        name: thread_id
+        required: true
+        schema:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        style: simple
+      - description: The ID of the run.
+        explode: false
+        in: path
+        name: run_id
+        required: true
+        schema:
+          description: The ID of the run.
+          format: uuid
+          title: Run Id
+          type: string
+        style: simple
+      - explode: true
+        in: query
+        name: wait
+        required: false
+        schema:
+          default: false
+          title: Wait
+          type: boolean
+        style: form
+      - description: Action to take when cancelling the run. Possible values are `interrupt`
+          or `rollback`. `interrupt` will simply cancel the run. `rollback` will cancel
+          the run and delete the run and associated checkpoints afterwards.
+        explode: true
+        in: query
+        name: action
+        required: false
+        schema:
+          default: interrupt
+          enum:
+          - interrupt
+          - rollback
+          title: Action
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Cancel Run
+      tags:
+      - Thread Runs
+  /runs/crons:
+    post:
+      description: Create a cron to schedule runs on new threads.
+      operationId: create_cron_runs_crons_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CronCreate'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cron'
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Create Cron
+      tags:
+      - Crons (Plus tier)
+  /runs/crons/search:
+    post:
+      description: Search all active crons
+      operationId: search_crons_runs_crons_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CronSearch'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Cron'
+                type: array
+          description: Success
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Search Crons
+      tags:
+      - Crons (Plus tier)
+  /runs/stream:
+    post:
+      description: "Create a run in a new thread, stream the output."
+      operationId: stream_run_stateless_runs_stream_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunCreateStateless'
+        required: true
+      responses:
+        "200":
+          content:
+            text/event-stream:
+              schema:
+                description: |-
+                  The server will send a stream of events in SSE format.
+
+                  **Example event**:
+
+                  id: 1
+
+                  event: message
+
+                  data: {}
+                type: string
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: "Create Run, Stream Output"
+      tags:
+      - Stateless Runs
+  /runs/wait:
+    post:
+      description: Create a run in a new thread. Wait for the final output and then
+        return it.
+      operationId: wait_run_stateless_runs_wait_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunCreateStateless'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: "Create Run, Wait for Output"
+      tags:
+      - Stateless Runs
+  /runs:
+    post:
+      description: "Create a run in a new thread, return the run ID immediately. Don't\
+        \ wait for the final run output."
+      operationId: run_stateless_runs_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunCreateStateless'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Create Background Run
+      tags:
+      - Stateless Runs
+  /runs/batch:
+    post:
+      description: "Create a batch of runs in new threads, return immediately."
+      operationId: run_batch_stateless_runs_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunBatchCreate'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Create Run Batch
+      tags:
+      - Stateless Runs
+  /runs/crons/{cron_id}:
+    delete:
+      description: Delete a cron by ID.
+      operationId: delete_cron_runs_crons__cron_id__delete
+      parameters:
+      - explode: false
+        in: path
+        name: cron_id
+        required: true
+        schema:
+          format: uuid
+          title: Cron Id
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Delete Cron
+      tags:
+      - Crons (Plus tier)
+  /store/items:
+    delete:
+      operationId: delete_item
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreDeleteRequest'
+        required: true
+      responses:
+        "204":
+          description: Success
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Delete an item.
+      tags:
+      - Store
+    get:
+      operationId: get_item
+      parameters:
+      - explode: true
+        in: query
+        name: key
+        required: true
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: namespace
+        required: false
+        schema:
+          items:
+            type: string
+          type: array
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+          description: Success
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Retrieve a single item.
+      tags:
+      - Store
+    put:
+      operationId: put_item
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorePutRequest'
+        required: true
+      responses:
+        "204":
+          description: Success
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Store or update an item.
+      tags:
+      - Store
+  /store/items/search:
+    post:
+      operationId: search_items
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreSearchRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchItemsResponse'
+          description: Success
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: Search for items within a namespace prefix.
+      tags:
+      - Store
+  /store/namespaces:
+    post:
+      operationId: list_namespaces
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreListNamespacesRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListNamespaceResponse'
+          description: Success
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation Error
+      summary: List namespaces with optional match conditions.
+      tags:
+      - Store
+components:
+  responses:
+    GetItemResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Item'
+      description: Successful retrieval of an item.
+    PutItemResponse:
+      content: {}
+      description: Item successfully stored or updated.
+    DeleteItemResponse:
+      content: {}
+      description: Item successfully deleted.
+    SearchItemsResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SearchItemsResponse'
+      description: Successful search operation.
+    ListNamespacesResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListNamespaceResponse'
+      description: Successful retrieval of namespaces.
+    ErrorResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+      description: An error occurred.
+  schemas:
+    Assistant:
+      example:
+        metadata: "{}"
+        assistant_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        name: name
+        created_at: 2000-01-23T04:56:07.000+00:00
+        graph_id: agent
+        config:
+          recursion_limit: 0
+          configurable: "{}"
+          tags:
+          - tags
+          - tags
+        version: 6
+      properties:
+        assistant_id:
+          description: The ID of the assistant.
+          format: uuid
+          title: Assistant Id
+          type: string
+        graph_id:
+          description: The ID of the graph.
+          enum:
+          - agent
+          title: Graph Id
+          type: string
+        config:
+          $ref: '#/components/schemas/Config_1'
+        created_at:
+          description: The time the assistant was created.
+          format: date-time
+          title: Created At
+          type: string
+        updated_at:
+          description: The last time the assistant was updated.
+          format: date-time
+          title: Updated At
+          type: string
+        metadata:
+          description: The assistant metadata.
+          title: Metadata
+          type: object
+        version:
+          description: The version of the assistant
+          title: Version
+          type: integer
+        name:
+          description: The name of the assistant
+          title: Assistant Name
+          type: string
+      required:
+      - assistant_id
+      - config
+      - created_at
+      - graph_id
+      - metadata
+      - updated_at
+      title: Assistant
+    AssistantCreate:
+      description: Payload for creating an assistant.
+      example:
+        if_exists: raise
+        metadata: "{}"
+        assistant_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        name: name
+        graph_id: agent
+        config: "{}"
+      properties:
+        assistant_id:
+          description: "The ID of the assistant. If not provided, a random UUID will\
+            \ be generated."
+          format: uuid
+          title: Assistant Id
+          type: string
+        graph_id:
+          description: The ID of the graph the assistant should use. The graph ID
+            is normally set in your langgraph.json configuration.
+          enum:
+          - agent
+          title: Graph Id
+          type: string
+        config:
+          description: Configuration to use for the graph. Useful when graph is configurable
+            and you want to create different assistants based on different configurations.
+          title: Config
+          type: object
+        metadata:
+          description: Metadata to add to assistant.
+          title: Metadata
+          type: object
+        if_exists:
+          default: raise
+          description: "How to handle duplicate creation. Must be either 'raise' (raise\
+            \ error if duplicate), or 'do_nothing' (return existing assistant)."
+          enum:
+          - raise
+          - do_nothing
+          title: If Exists
+          type: string
+        name:
+          description: The name of the assistant. Defaults to 'Untitled'.
+          title: Name
+          type: string
+      required:
+      - graph_id
+      title: AssistantCreate
+    AssistantPatch:
+      description: Payload for updating an assistant.
+      example:
+        metadata: "{}"
+        name: name
+        graph_id: agent
+        config: "{}"
+      properties:
+        graph_id:
+          description: "The ID of the graph the assistant should use. The graph ID\
+            \ is normally set in your langgraph.json configuration. If not provided,\
+            \ assistant will keep pointing to same graph."
+          enum:
+          - agent
+          title: Graph Id
+          type: string
+        config:
+          description: Configuration to use for the graph. Useful when graph is configurable
+            and you want to update the assistant's configuration.
+          title: Config
+          type: object
+        metadata:
+          description: Metadata to merge with existing assistant metadata.
+          title: Metadata
+          type: object
+        name:
+          description: "The new name for the assistant. If not provided, assistant\
+            \ will keep its current name."
+          title: Name
+          type: string
+      title: AssistantPatch
+    AssistantVersionChange:
+      description: Payload for changing the version of an assistant.
+      properties:
+        version:
+          description: The assistant version.
+          title: Version
+          type: integer
+      title: AssistantVersionChange
+    Config:
+      properties:
+        tags:
+          items:
+            type: string
+          type: array
+        recursion_limit:
+          title: Recursion Limit
+          type: integer
+        configurable:
+          title: Configurable
+          type: object
+      title: Config
+    Cron:
+      description: Represents a scheduled task.
+      example:
+        schedule: schedule
+        thread_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        payload: "{}"
+        end_time: 2000-01-23T04:56:07.000+00:00
+        created_at: 2000-01-23T04:56:07.000+00:00
+        cron_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        cron_id:
+          description: The ID of the cron.
+          format: uuid
+          title: Cron Id
+          type: string
+        thread_id:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        end_time:
+          description: The end date to stop running the cron.
+          format: date-time
+          title: End Time
+          type: string
+        schedule:
+          description: "The schedule to run, cron format."
+          title: Schedule
+          type: string
+        created_at:
+          description: The time the cron was created.
+          format: date-time
+          title: Created At
+          type: string
+        updated_at:
+          description: The last time the cron was updated.
+          format: date-time
+          title: Updated At
+          type: string
+        payload:
+          description: The run payload to use for creating new run.
+          title: Payload
+          type: object
+      required:
+      - created_at
+      - cron_id
+      - end_time
+      - payload
+      - schedule
+      - thread_id
+      - updated_at
+      title: Cron
+    CronCreate:
+      description: Payload for creating a cron job.
+      example:
+        schedule: schedule
+        input:
+        - "{}"
+        - "{}"
+        metadata: "{}"
+        assistant_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        webhook: https://openapi-generator.tech
+        interrupt_before: '*'
+        multitask_strategy: reject
+        config:
+          recursion_limit: 6
+          configurable: "{}"
+          tags:
+          - tags
+          - tags
+        interrupt_after: '*'
+      properties:
+        schedule:
+          description: The cron schedule to execute this job on.
+          title: Schedule
+          type: string
+        assistant_id:
+          $ref: '#/components/schemas/CronCreate_assistant_id'
+        input:
+          $ref: '#/components/schemas/Input'
+        metadata:
+          description: Metadata to assign to the cron job runs.
+          title: Metadata
+          type: object
+        config:
+          $ref: '#/components/schemas/Config_2'
+        webhook:
+          description: Webhook to call after LangGraph API call is done.
+          format: uri
+          maxLength: 65536
+          minLength: 1
+          title: Webhook
+          type: string
+        interrupt_before:
+          $ref: '#/components/schemas/Interrupt_Before'
+        interrupt_after:
+          $ref: '#/components/schemas/Interrupt_After'
+        multitask_strategy:
+          default: reject
+          description: "Multitask strategy to use. Must be one of 'reject', 'interrupt',\
+            \ 'rollback', or 'enqueue'."
+          enum:
+          - reject
+          - rollback
+          - interrupt
+          - enqueue
+          title: Multitask Strategy
+          type: string
+      required:
+      - assistant_id
+      - schedule
+      title: CronCreate
+    CronSearch:
+      description: Payload for listing crons
+      example:
+        thread_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        assistant_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        offset: 0
+        limit: 81
+      properties:
+        assistant_id:
+          description: The assistant ID or graph name to search for.
+          format: uuid
+          title: Assistant Id
+          type: string
+        thread_id:
+          description: The thread ID to search for.
+          format: uuid
+          title: Thread Id
+          type: string
+        limit:
+          default: 10
+          description: The maximum number of results to return.
+          maximum: 1000
+          minimum: 1
+          title: Limit
+          type: integer
+        offset:
+          default: 0
+          description: The number of results to skip.
+          minimum: 0
+          title: Offset
+          type: integer
+      title: CronSearch
+    GraphSchema:
+      description: Defines the structure and properties of a graph.
+      example:
+        state_schema: "{}"
+        input_schema: "{}"
+        config_schema: "{}"
+        graph_id: agent
+        output_schema: "{}"
+      properties:
+        graph_id:
+          description: The ID of the graph.
+          enum:
+          - agent
+          title: Graph Id
+          type: string
+        input_schema:
+          description: The schema for the graph input. Missing if unable to generate
+            JSON schema from graph.
+          title: Input Schema
+          type: object
+        output_schema:
+          description: The schema for the graph output. Missing if unable to generate
+            JSON schema from graph.
+          title: Output Schema
+          type: object
+        state_schema:
+          description: The schema for the graph state. Missing if unable to generate
+            JSON schema from graph.
+          title: State Schema
+          type: object
+        config_schema:
+          description: The schema for the graph config. Missing if unable to generate
+            JSON schema from graph.
+          title: Config Schema
+          type: object
+      required:
+      - config_schema
+      - graph_id
+      - state_schema
+      title: GraphSchema
+    GraphSchemaNoId:
+      description: Defines the structure and properties of a graph without an ID.
+      properties:
+        input_schema:
+          description: The schema for the graph input. Missing if unable to generate
+            JSON schema from graph.
+          title: Input Schema
+          type: object
+        output_schema:
+          description: The schema for the graph output. Missing if unable to generate
+            JSON schema from graph.
+          title: Output Schema
+          type: object
+        state_schema:
+          description: The schema for the graph state. Missing if unable to generate
+            JSON schema from graph.
+          title: State Schema
+          type: object
+        config_schema:
+          description: The schema for the graph config. Missing if unable to generate
+            JSON schema from graph.
+          title: Config Schema
+          type: object
+      required:
+      - config_schema
+      - input_schema
+      - output_schema
+      - state_schema
+      title: GraphSchemaNoId
+    Subgraphs:
+      additionalProperties:
+        $ref: '#/components/schemas/GraphSchemaNoId'
+      description: "Map of graph name to graph schema metadata (`input_schema`, `output_schema`,\
+        \ `state_schema`, `config_schema`)."
+      title: Subgraphs
+    Run:
+      example:
+        thread_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        metadata: "{}"
+        run_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        assistant_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        kwargs: "{}"
+        created_at: 2000-01-23T04:56:07.000+00:00
+        multitask_strategy: reject
+        status: pending
+      properties:
+        run_id:
+          description: The ID of the run.
+          format: uuid
+          title: Run Id
+          type: string
+        thread_id:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        assistant_id:
+          description: The assistant that was used for this run.
+          format: uuid
+          title: Assistant Id
+          type: string
+        created_at:
+          description: The time the run was created.
+          format: date-time
+          title: Created At
+          type: string
+        updated_at:
+          description: The last time the run was updated.
+          format: date-time
+          title: Updated At
+          type: string
+        status:
+          description: "The status of the run. One of 'pending', 'error', 'success',\
+            \ 'timeout', 'interrupted'."
+          enum:
+          - pending
+          - error
+          - success
+          - timeout
+          - interrupted
+          title: Status
+          type: string
+        metadata:
+          description: The run metadata.
+          title: Metadata
+          type: object
+        kwargs:
+          title: Kwargs
+          type: object
+        multitask_strategy:
+          description: Strategy to handle concurrent runs on the same thread.
+          enum:
+          - reject
+          - rollback
+          - interrupt
+          - enqueue
+          title: Multitask Strategy
+          type: string
+      required:
+      - assistant_id
+      - created_at
+      - kwargs
+      - metadata
+      - multitask_strategy
+      - run_id
+      - status
+      - thread_id
+      - updated_at
+      title: Run
+    Send:
+      description: A message to send to a node.
+      example:
+        node: node
+        input: "{}"
+      properties:
+        node:
+          description: The node to send the message to.
+          title: Node
+          type: string
+        input:
+          description: The message to send.
+          title: Message
+          type: object
+      required:
+      - input
+      - node
+      title: Send
+    Command:
+      description: The command to run.
+      example:
+        resume: 0.8008281904610115
+        goto:
+          node: node
+          input: "{}"
+        update: "{}"
+      properties:
+        update:
+          description: An update to the state.
+          nullable: true
+          title: Update
+        resume:
+          $ref: '#/components/schemas/Resume'
+        goto:
+          $ref: '#/components/schemas/Goto'
+      title: Command
+    RunCreateStateful:
+      description: Payload for creating a run.
+      example:
+        checkpoint:
+          thread_id: thread_id
+          checkpoint_ns: checkpoint_ns
+          checkpoint_id: checkpoint_id
+          checkpoint_map: "{}"
+        metadata: "{}"
+        after_seconds: 1
+        assistant_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        webhook: https://openapi-generator.tech
+        interrupt_before: '*'
+        feedback_keys:
+        - feedback_keys
+        - feedback_keys
+        multitask_strategy: reject
+        interrupt_after: '*'
+        command:
+          resume: 0.8008281904610115
+          goto:
+            node: node
+            input: "{}"
+          update: "{}"
+        input: "{}"
+        if_not_exists: reject
+        stream_mode:
+        - values
+        - values
+        stream_subgraphs: false
+        on_disconnect: cancel
+        config:
+          recursion_limit: 6
+          configurable: "{}"
+          tags:
+          - tags
+          - tags
+      properties:
+        assistant_id:
+          $ref: '#/components/schemas/RunCreateStateful_assistant_id'
+        checkpoint:
+          $ref: '#/components/schemas/CheckpointConfig'
+        input:
+          $ref: '#/components/schemas/Input_1'
+        command:
+          $ref: '#/components/schemas/Command'
+        metadata:
+          description: Metadata to assign to the run.
+          title: Metadata
+          type: object
+        config:
+          $ref: '#/components/schemas/Config_2'
+        webhook:
+          description: Webhook to call after LangGraph API call is done.
+          format: uri
+          maxLength: 65536
+          minLength: 1
+          title: Webhook
+          type: string
+        interrupt_before:
+          $ref: '#/components/schemas/Interrupt_Before'
+        interrupt_after:
+          $ref: '#/components/schemas/Interrupt_After'
+        stream_mode:
+          $ref: '#/components/schemas/Stream_Mode'
+        stream_subgraphs:
+          default: false
+          description: Whether to stream output from subgraphs.
+          title: Stream Subgraphs
+          type: boolean
+        on_disconnect:
+          default: cancel
+          description: The disconnect mode to use. Must be one of 'cancel' or 'continue'.
+          enum:
+          - cancel
+          - continue
+          title: On Disconnect
+          type: string
+        feedback_keys:
+          description: Feedback keys to assign to run.
+          items:
+            type: string
+          type: array
+        multitask_strategy:
+          default: reject
+          description: "Multitask strategy to use. Must be one of 'reject', 'interrupt',\
+            \ 'rollback', or 'enqueue'."
+          enum:
+          - reject
+          - rollback
+          - interrupt
+          - enqueue
+          title: Multitask Strategy
+          type: string
+        if_not_exists:
+          default: reject
+          description: "How to handle missing thread. Must be either 'reject' (raise\
+            \ error if missing), or 'create' (create new thread)."
+          enum:
+          - create
+          - reject
+          title: If Not Exists
+          type: string
+        after_seconds:
+          description: The number of seconds to wait before starting the run. Use
+            to schedule future runs.
+          title: After Seconds
+          type: integer
+      required:
+      - assistant_id
+      title: RunCreateStateful
+    RunBatchCreate:
+      description: Payload for creating a batch of runs.
+      items:
+        $ref: '#/components/schemas/RunCreateStateless'
+      minItems: 1
+      type: array
+    RunCreateStateless:
+      description: Payload for creating a run.
+      example:
+        metadata: "{}"
+        after_seconds: 0
+        assistant_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        webhook: https://openapi-generator.tech
+        interrupt_before: '*'
+        feedback_keys:
+        - feedback_keys
+        - feedback_keys
+        interrupt_after: '*'
+        command:
+          resume: 0.8008281904610115
+          goto:
+            node: node
+            input: "{}"
+          update: "{}"
+        input: "{}"
+        stream_mode:
+        - values
+        - values
+        stream_subgraphs: false
+        on_disconnect: cancel
+        config:
+          recursion_limit: 6
+          configurable: "{}"
+          tags:
+          - tags
+          - tags
+        on_completion: delete
+      properties:
+        assistant_id:
+          $ref: '#/components/schemas/RunCreateStateful_assistant_id'
+        input:
+          $ref: '#/components/schemas/Input_1'
+        command:
+          $ref: '#/components/schemas/Command'
+        metadata:
+          description: Metadata to assign to the run.
+          title: Metadata
+          type: object
+        config:
+          $ref: '#/components/schemas/Config_2'
+        webhook:
+          description: Webhook to call after LangGraph API call is done.
+          format: uri
+          maxLength: 65536
+          minLength: 1
+          title: Webhook
+          type: string
+        interrupt_before:
+          $ref: '#/components/schemas/Interrupt_Before'
+        interrupt_after:
+          $ref: '#/components/schemas/Interrupt_After'
+        stream_mode:
+          $ref: '#/components/schemas/Stream_Mode'
+        feedback_keys:
+          description: Feedback keys to assign to run.
+          items:
+            type: string
+          type: array
+        stream_subgraphs:
+          default: false
+          description: Whether to stream output from subgraphs.
+          title: Stream Subgraphs
+          type: boolean
+        on_completion:
+          default: delete
+          description: Whether to delete or keep the thread created for a stateless
+            run. Must be one of 'delete' or 'keep'.
+          enum:
+          - delete
+          - keep
+          title: On Completion
+          type: string
+        on_disconnect:
+          default: cancel
+          description: The disconnect mode to use. Must be one of 'cancel' or 'continue'.
+          enum:
+          - cancel
+          - continue
+          title: On Disconnect
+          type: string
+        after_seconds:
+          description: The number of seconds to wait before starting the run. Use
+            to schedule future runs.
+          title: After Seconds
+          type: integer
+      required:
+      - assistant_id
+      title: RunCreateStateless
+    AssistantSearchRequest:
+      description: Payload for listing assistants.
+      example:
+        metadata: "{}"
+        offset: 0
+        limit: 81
+        graph_id: agent
+      properties:
+        metadata:
+          description: Metadata to filter by. Exact match filter for each KV pair.
+          title: Metadata
+          type: object
+        graph_id:
+          description: The ID of the graph to filter by. The graph ID is normally
+            set in your langgraph.json configuration.
+          enum:
+          - agent
+          title: Graph Id
+          type: string
+        limit:
+          default: 10
+          description: The maximum number of results to return.
+          maximum: 1000
+          minimum: 1
+          title: Limit
+          type: integer
+        offset:
+          default: 0
+          description: The number of results to skip.
+          minimum: 0
+          title: Offset
+          type: integer
+      title: AssistantSearchRequest
+    AssistantVersionsSearchRequest:
+      description: Payload for listing assistant versions.
+      properties:
+        metadata:
+          description: Metadata to filter versions by. Exact match filter for each
+            KV pair.
+          title: Metadata
+          type: object
+        limit:
+          default: 10
+          description: The maximum number of versions to return.
+          maximum: 1000
+          minimum: 1
+          title: Limit
+          type: integer
+        offset:
+          default: 0
+          description: The number of versions to skip.
+          minimum: 0
+          title: Offset
+          type: integer
+      title: SearchRequest
+    ThreadSearchRequest:
+      description: Payload for listing threads.
+      example:
+        metadata: "{}"
+        offset: 0
+        values: "{}"
+        limit: 81
+        status: idle
+      properties:
+        metadata:
+          description: Thread metadata to filter on.
+          title: Metadata
+          type: object
+        values:
+          description: State values to filter on.
+          title: Values
+          type: object
+        status:
+          description: Thread status to filter on.
+          enum:
+          - idle
+          - busy
+          - interrupted
+          - error
+          title: Status
+          type: string
+        limit:
+          default: 10
+          description: Maximum number to return.
+          maximum: 1000
+          minimum: 1
+          title: Limit
+          type: integer
+        offset:
+          default: 0
+          description: Offset to start from.
+          minimum: 0
+          title: Offset
+          type: integer
+      title: ThreadSearchRequest
+    Thread:
+      example:
+        thread_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        metadata: "{}"
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        values: "{}"
+        created_at: 2000-01-23T04:56:07.000+00:00
+        status: idle
+      properties:
+        thread_id:
+          description: The ID of the thread.
+          format: uuid
+          title: Thread Id
+          type: string
+        created_at:
+          description: The time the thread was created.
+          format: date-time
+          title: Created At
+          type: string
+        updated_at:
+          description: The last time the thread was updated.
+          format: date-time
+          title: Updated At
+          type: string
+        metadata:
+          description: The thread metadata.
+          title: Metadata
+          type: object
+        status:
+          description: The status of the thread.
+          enum:
+          - idle
+          - busy
+          - interrupted
+          - error
+          title: Status
+          type: string
+        values:
+          description: The current state of the thread.
+          title: Values
+          type: object
+      required:
+      - created_at
+      - metadata
+      - status
+      - thread_id
+      - updated_at
+      title: Thread
+    ThreadCreate:
+      description: Payload for creating a thread.
+      example:
+        if_exists: raise
+        thread_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        metadata: "{}"
+      properties:
+        thread_id:
+          description: "The ID of the thread. If not provided, a random UUID will\
+            \ be generated."
+          format: uuid
+          title: Thread Id
+          type: string
+        metadata:
+          description: Metadata to add to thread.
+          title: Metadata
+          type: object
+        if_exists:
+          default: raise
+          description: "How to handle duplicate creation. Must be either 'raise' (raise\
+            \ error if duplicate), or 'do_nothing' (return existing thread)."
+          enum:
+          - raise
+          - do_nothing
+          title: If Exists
+          type: string
+      title: ThreadCreate
+    ThreadPatch:
+      description: Payload for creating a thread.
+      example:
+        metadata: "{}"
+      properties:
+        metadata:
+          description: Metadata to merge with existing thread metadata.
+          title: Metadata
+          type: object
+      title: ThreadPatch
+    ThreadStateCheckpointRequest:
+      description: Payload for getting the state of a thread at a checkpoint.
+      example:
+        checkpoint:
+          thread_id: thread_id
+          checkpoint_ns: checkpoint_ns
+          checkpoint_id: checkpoint_id
+          checkpoint_map: "{}"
+        subgraphs: true
+      properties:
+        checkpoint:
+          $ref: '#/components/schemas/CheckpointConfig'
+        subgraphs:
+          description: Include subgraph states.
+          title: Subgraphs
+          type: boolean
+      required:
+      - checkpoint
+      title: ThreadStateCheckpointRequest
+    ThreadState:
+      example:
+        next:
+        - next
+        - next
+        checkpoint:
+          thread_id: thread_id
+          checkpoint_ns: checkpoint_ns
+          checkpoint_id: checkpoint_id
+          checkpoint_map: "{}"
+        metadata: "{}"
+        parent_checkpoint: "{}"
+        values:
+        - "{}"
+        - "{}"
+        created_at: created_at
+        tasks:
+        - checkpoint:
+            thread_id: thread_id
+            checkpoint_ns: checkpoint_ns
+            checkpoint_id: checkpoint_id
+            checkpoint_map: "{}"
+          name: name
+          interrupts:
+          - ""
+          - ""
+          id: id
+          state: null
+          error: error
+        - checkpoint:
+            thread_id: thread_id
+            checkpoint_ns: checkpoint_ns
+            checkpoint_id: checkpoint_id
+            checkpoint_map: "{}"
+          name: name
+          interrupts:
+          - ""
+          - ""
+          id: id
+          state: null
+          error: error
+      properties:
+        values:
+          $ref: '#/components/schemas/Values'
+        next:
+          items:
+            type: string
+          type: array
+        tasks:
+          items:
+            $ref: '#/components/schemas/ThreadState_tasks_inner'
+          type: array
+        checkpoint:
+          $ref: '#/components/schemas/CheckpointConfig'
+        metadata:
+          title: Metadata
+          type: object
+        created_at:
+          title: Created At
+          type: string
+        parent_checkpoint:
+          title: Parent Checkpoint
+          type: object
+      required:
+      - checkpoint
+      - created_at
+      - metadata
+      - next
+      - values
+      title: ThreadState
+    ThreadStateSearch:
+      example:
+        checkpoint:
+          thread_id: thread_id
+          checkpoint_ns: checkpoint_ns
+          checkpoint_id: checkpoint_id
+          checkpoint_map: "{}"
+        metadata: "{}"
+        before:
+          thread_id: thread_id
+          checkpoint_ns: checkpoint_ns
+          checkpoint_id: checkpoint_id
+          checkpoint_map: "{}"
+        limit: 81
+      properties:
+        limit:
+          default: 10
+          description: The maximum number of states to return.
+          maximum: 1000
+          minimum: 1
+          title: Limit
+          type: integer
+        before:
+          $ref: '#/components/schemas/CheckpointConfig'
+        metadata:
+          description: Filter states by metadata key-value pairs.
+          title: Metadata
+          type: object
+        checkpoint:
+          $ref: '#/components/schemas/CheckpointConfig'
+      title: ThreadStateSearch
+    ThreadStateUpdate:
+      description: Payload for updating the state of a thread.
+      example:
+        checkpoint:
+          thread_id: thread_id
+          checkpoint_ns: checkpoint_ns
+          checkpoint_id: checkpoint_id
+          checkpoint_map: "{}"
+        values:
+        - "{}"
+        - "{}"
+        as_node: as_node
+      properties:
+        values:
+          $ref: '#/components/schemas/Values_1'
+        checkpoint:
+          $ref: '#/components/schemas/CheckpointConfig'
+        as_node:
+          description: Update the state as if this node had just executed.
+          title: As Node
+          type: string
+      title: ThreadStateUpdate
+    ThreadStateUpdateResponse:
+      description: Response for adding state to a thread.
+      example:
+        checkpoint: "{}"
+      properties:
+        checkpoint:
+          title: Checkpoint
+          type: object
+      title: ThreadStateUpdateResponse
+    CheckpointConfig:
+      description: Checkpoint config.
+      example:
+        thread_id: thread_id
+        checkpoint_ns: checkpoint_ns
+        checkpoint_id: checkpoint_id
+        checkpoint_map: "{}"
+      properties:
+        thread_id:
+          description: Unique identifier for the thread associated with this checkpoint.
+          type: string
+        checkpoint_ns:
+          description: "Namespace for the checkpoint, used for organization and retrieval."
+          type: string
+        checkpoint_id:
+          description: Optional unique identifier for the checkpoint itself.
+          type: string
+        checkpoint_map:
+          description: Optional dictionary containing checkpoint-specific data.
+          type: object
+      title: CheckpointConfig
+    StorePutRequest:
+      description: Request to store or update an item.
+      example:
+        namespace:
+        - namespace
+        - namespace
+        value: "{}"
+        key: key
+      properties:
+        namespace:
+          description: A list of strings representing the namespace path.
+          items:
+            type: string
+          type: array
+        key:
+          description: The unique identifier for the item within the namespace.
+          title: Key
+          type: string
+        value:
+          description: A dictionary containing the item's data.
+          title: Value
+          type: object
+      required:
+      - key
+      - namespace
+      - value
+      title: StorePutRequest
+    StoreDeleteRequest:
+      description: Request to delete an item.
+      example:
+        namespace:
+        - namespace
+        - namespace
+        key: key
+      properties:
+        namespace:
+          description: A list of strings representing the namespace path.
+          items:
+            type: string
+          type: array
+        key:
+          description: The unique identifier for the item.
+          title: Key
+          type: string
+      required:
+      - key
+      title: StoreDeleteRequest
+    StoreSearchRequest:
+      description: Request to search for items within a namespace prefix.
+      example:
+        filter:
+          key: ""
+        namespace_prefix:
+        - namespace_prefix
+        - namespace_prefix
+        offset: 6
+        limit: 0
+      properties:
+        namespace_prefix:
+          description: List of strings representing the namespace prefix.
+          items:
+            type: string
+          nullable: true
+          type: array
+        filter:
+          additionalProperties: {}
+          description: Optional dictionary of key-value pairs to filter results.
+          title: Filter
+        limit:
+          default: 10
+          description: Maximum number of items to return (default is 10).
+          title: Limit
+          type: integer
+        offset:
+          default: 0
+          description: Number of items to skip before returning results (default is
+            0).
+          title: Offset
+          type: integer
+      title: StoreSearchRequest
+    StoreListNamespacesRequest:
+      example:
+        offset: 1
+        prefix:
+        - prefix
+        - prefix
+        max_depth: 0
+        limit: 6
+        suffix:
+        - suffix
+        - suffix
+      properties:
+        prefix:
+          description: Optional list of strings representing the prefix to filter
+            namespaces.
+          items:
+            type: string
+          type: array
+        suffix:
+          description: Optional list of strings representing the suffix to filter
+            namespaces.
+          items:
+            type: string
+          type: array
+        max_depth:
+          description: Optional integer specifying the maximum depth of namespaces
+            to return.
+          title: Max Depth
+          type: integer
+        limit:
+          default: 100
+          description: Maximum number of namespaces to return (default is 100).
+          title: Limit
+          type: integer
+        offset:
+          default: 0
+          description: Number of namespaces to skip before returning results (default
+            is 0).
+          title: Offset
+          type: integer
+    Item:
+      description: Represents a single document or data entry in the graph's Store.
+        Items are used to store cross-thread memories.
+      example:
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        namespace:
+        - namespace
+        - namespace
+        created_at: 2000-01-23T04:56:07.000+00:00
+        value: "{}"
+        key: key
+      properties:
+        namespace:
+          description: The namespace of the item. A namespace is analogous to a document's
+            directory.
+          items:
+            type: string
+          type: array
+        key:
+          description: "The unique identifier of the item within its namespace. In\
+            \ general, keys needn't be globally unique."
+          type: string
+        value:
+          description: The value stored in the item. This is the document itself.
+          type: object
+        created_at:
+          description: The timestamp when the item was created.
+          format: date-time
+          type: string
+        updated_at:
+          description: The timestamp when the item was last updated.
+          format: date-time
+          type: string
+      required:
+      - created_at
+      - key
+      - namespace
+      - updated_at
+      - value
+    SearchItemsResponse:
+      example:
+        items:
+        - updated_at: 2000-01-23T04:56:07.000+00:00
+          namespace:
+          - namespace
+          - namespace
+          created_at: 2000-01-23T04:56:07.000+00:00
+          value: "{}"
+          key: key
+        - updated_at: 2000-01-23T04:56:07.000+00:00
+          namespace:
+          - namespace
+          - namespace
+          created_at: 2000-01-23T04:56:07.000+00:00
+          value: "{}"
+          key: key
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/Item'
+          type: array
+      required:
+      - items
+    ListNamespaceResponse:
+      items:
+        items:
+          type: string
+        type: array
+      type: array
+    ErrorResponse:
+      description: Error message returned from the server
+      title: ErrorResponse
+      type: string
+    get_assistant_graph_assistants__assistant_id__graph_get_assistant_id_parameter:
+      anyOf:
+      - description: The ID of the assistant.
+        format: uuid
+        title: Assistant ID
+        type: string
+      - description: The ID of the graph.
+        title: Graph ID
+        type: string
+    Xray:
+      default: false
+      description: "Include graph representation of subgraphs. If an integer value\
+        \ is provided, only subgraphs with a depth less than or equal to the value\
+        \ will be included."
+      oneOf:
+      - type: boolean
+      - type: integer
+      title: Xray
+    Config_1:
+      description: The assistant config.
+      example:
+        recursion_limit: 0
+        configurable: "{}"
+        tags:
+        - tags
+        - tags
+      properties:
+        tags:
+          items:
+            type: string
+          type: array
+        recursion_limit:
+          title: Recursion Limit
+          type: integer
+        configurable:
+          title: Configurable
+          type: object
+      title: Config
+    CronCreate_assistant_id:
+      anyOf:
+      - format: uuid
+        title: Assistant Id
+        type: string
+      - title: Graph Id
+        type: string
+      description: "The assistant ID or graph name to run. If using graph name, will\
+        \ default to the assistant automatically created from that graph by the server."
+    Input:
+      anyOf:
+      - items:
+          type: object
+        type: array
+      - type: object
+      description: The input to the graph.
+      title: Input
+    Config_2:
+      description: The configuration for the assistant.
+      example:
+        recursion_limit: 6
+        configurable: "{}"
+        tags:
+        - tags
+        - tags
+      properties:
+        tags:
+          items:
+            type: string
+          type: array
+        recursion_limit:
+          title: Recursion Limit
+          type: integer
+        configurable:
+          title: Configurable
+          type: object
+      title: Config
+    Interrupt_Before:
+      anyOf:
+      - enum:
+        - '*'
+        type: string
+      - items:
+          type: string
+        type: array
+      description: Nodes to interrupt immediately before they get executed.
+      title: Interrupt Before
+    Interrupt_After:
+      anyOf:
+      - enum:
+        - '*'
+        type: string
+      - items:
+          type: string
+        type: array
+      description: Nodes to interrupt immediately after they get executed.
+      title: Interrupt After
+    Resume:
+      anyOf:
+      - type: number
+      - type: string
+      description: A value to pass to an interrupted node.
+      nullable: true
+      title: Resume
+    Goto:
+      anyOf:
+      - $ref: '#/components/schemas/Send'
+      - items:
+          $ref: '#/components/schemas/Send'
+        type: array
+      - type: string
+      - items:
+          type: string
+        type: array
+      description: Name of the node(s) to navigate to next or node(s) to be executed
+        with a provided input.
+      nullable: true
+      title: Goto
+    RunCreateStateful_assistant_id:
+      anyOf:
+      - format: uuid
+        title: Assistant Id
+        type: string
+      - title: Graph Id
+        type: string
+      description: "The assistant ID or graph name to run. If using graph name, will\
+        \ default to first assistant created from that graph."
+    Input_1:
+      anyOf:
+      - type: object
+      - items: {}
+        type: array
+      - type: string
+      - type: number
+      - type: boolean
+      description: The input to the graph.
+      nullable: true
+      title: Input
+    Stream_Mode:
+      anyOf:
+      - items:
+          enum:
+          - values
+          - messages
+          - messages-tuple
+          - updates
+          - events
+          - debug
+          - custom
+          type: string
+        type: array
+      - enum:
+        - values
+        - messages
+        - messages-tuple
+        - updates
+        - events
+        - debug
+        - custom
+        type: string
+      default:
+      - values
+      description: The stream mode(s) to use.
+      title: Stream Mode
+    Values:
+      anyOf:
+      - items:
+          type: object
+        type: array
+      - type: object
+      title: Values
+    ThreadState_tasks_inner:
+      example:
+        checkpoint:
+          thread_id: thread_id
+          checkpoint_ns: checkpoint_ns
+          checkpoint_id: checkpoint_id
+          checkpoint_map: "{}"
+        name: name
+        interrupts:
+        - ""
+        - ""
+        id: id
+        state: null
+        error: error
+      properties:
+        id:
+          title: Task Id
+          type: string
+        name:
+          title: Node Name
+          type: string
+        error:
+          title: Error
+          type: string
+        interrupts:
+          items: {}
+          type: array
+        checkpoint:
+          $ref: '#/components/schemas/CheckpointConfig'
+        state:
+          $ref: '#/components/schemas/ThreadState'
+      required:
+      - id
+      - name
+    Values_1:
+      anyOf:
+      - items:
+          type: object
+        type: array
+      - type: object
+      description: The values to update the state with.
+      nullable: true
+      title: Values
