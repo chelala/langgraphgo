@@ -11,12 +11,16 @@ package langgraphgo_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
 	"testing"
 
 	"github.com/chelala/langgraphgo"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tmaxmax/go-sse"
 )
 
 func Test_langgraphgo_ThreadRunsAPIService(t *testing.T) {
@@ -137,21 +141,135 @@ func Test_langgraphgo_ThreadRunsAPIService(t *testing.T) {
 
 	t.Run("Test ThreadRunsAPIService StreamRunThreadsThreadIdRunsStreamPost", func(t *testing.T) {
 
-		t.Skip("skip test") // remove to run test
+		// t.Skip("skip test") // remove to run test
 
-		var threadId string
+		threadId := "86de033f-49a6-44ce-97fc-4d3cca3865c4"
+		graphName := "agent"
+		inputId := uuid.New()
+		// inputtext := "Que hora es?"
+		// inputtext := "Cuál es la temperatura en  NYC?"
+		// inputtext := "Cuál es la temperatura en  San Francisco?"
+		inputtext := "Requisitos para un prestamo Micro?"
 
-		resp, httpRes, err := apiClient.ThreadRunsAPI.StreamRunThreadsThreadIdRunsStreamPost(context.Background(), threadId).Execute()
+		// We prepare a context with a cancel function to stop the stream
+		myctx, cancelMyContext := context.WithCancel(context.Background())
+
+		threadRunsStream := apiClient.ThreadRunsAPI.StreamRunThreadsThreadIdRunsStreamPost(myctx, threadId)
+
+		input := map[string]interface{}{
+			"messages": []interface{}{
+				map[string]interface{}{
+					"id":      inputId.String(),
+					"content": inputtext,
+					"type":    "human",
+				},
+			},
+		}
+		// streamModeText := "updates"
+		streamModeArray := []string{"messages", "updates", "values"}
+		streamMode := langgraphgo.StreamMode{
+			// String: &streamModeText,
+			ArrayOfString: &streamModeArray,
+		}
+		threadRunsStreamReq := threadRunsStream.RunCreateStateful(langgraphgo.RunCreateStateful{
+			AssistantId: langgraphgo.RunCreateStatefulAssistantId{
+				String: &graphName,
+			},
+			Input: *langgraphgo.NewNullableInput1(&langgraphgo.Input1{
+				MapmapOfStringAny: &input,
+			}),
+			StreamMode: &streamMode,
+		})
+
+		// resp, httpRes, err := threadRunsStreamReq.Execute()
+		conn, err := threadRunsStreamReq.CreateSSEConnection()
+		if err != nil {
+			fmt.Printf("Error creating SSE Connection: %s", err)
+		}
 
 		require.Nil(t, err)
-		require.NotNil(t, resp)
-		assert.Equal(t, 200, httpRes.StatusCode)
+		require.NotNil(t, conn)
+		// assert.Equal(t, 200, httpRes.StatusCode)
+
+		eventMessagesMetadata := map[string]string{}
+		// var unsubscribe sse.EventCallbackRemover
+		unsubscribe := conn.SubscribeToAll(func(event sse.Event) {
+			// fmt.Printf("******************* Received event - LastEventID: %s, Type: %s *******************", event.LastEventID, event.Type)
+
+			var eventDataI interface{}
+			err := apiClient.SSEDecode(&eventDataI, []byte(event.Data), "application/json")
+			if err != nil {
+				fmt.Printf("Error decoding event data: %s", err)
+				t.Fail()
+			}
+
+			if event.Type == "metadata" {
+				eventData, _ := eventDataI.(map[string]interface{})
+				runId, _ := eventData["run_id"].(string)
+				attempt, _ := eventData["attempt"].(int)
+				fmt.Printf("Run ID: %v\n", runId)
+				fmt.Printf("Attempt: %v\n", attempt)
+			}
+			if event.Type == "messages/metadata" {
+				eventData, _ := eventDataI.(map[string]interface{})
+				for key, value := range eventData {
+					// eventMessagesMetadata = append(eventMessagesMetadata, key)
+					valueI, _ := value.(map[string]interface{})
+					metadataI, _ := valueI["metadata"].(map[string]interface{})
+					langgraphNode, _ := metadataI["langgraph_node"].(string)
+					// currentLanggraphNode = _currentLanggraphNode
+					eventMessagesMetadata[key] = langgraphNode
+					fmt.Printf("Metadata for node: %v\n", langgraphNode)
+				}
+			}
+			if event.Type == "messages/partial" {
+				eventData, _ := eventDataI.([]interface{})
+				for _, value := range eventData {
+					valueI, _ := value.(map[string]interface{})
+					id, _ := valueI["id"].(string)
+					role := eventMessagesMetadata[id]
+					switch role {
+					case "generate", "creditofull":
+						if content, ok := valueI["content"].(string); ok {
+							fmt.Printf("Partial content of %v: %v\n", role, content)
+						}
+					default:
+						fmt.Print(".")
+					}
+				}
+			}
+			if event.Type == "updates" {
+				fmt.Print("Update\n")
+			}
+			if event.Type == "values" {
+				fmt.Print("Values:\n")
+				responseMap, _ := eventDataI.(map[string]interface{})
+
+				processEventMessages(t, responseMap, inputId)
+
+				_ = cancelMyContext
+				// eventDataNext, _ := responseMap["next"].(string)
+				// if eventDataNext == "__end__" {
+				// 	// unsubscribe()
+				// 	cancelMyContext()
+				// }
+			}
+		})
+		_ = unsubscribe
+
+		if err := conn.Connect(); err != nil {
+			if errors.Is(err, io.EOF) {
+				fmt.Printf("Connection closed with <EOF>: %s", err)
+			} else {
+				fmt.Printf("Connection closed with error: %s", err)
+			}
+		}
 
 	})
 
 	t.Run("Test ThreadRunsAPIService WaitRunThreadsThreadIdRunsWaitPost", func(t *testing.T) {
 
-		// t.Skip("skip test") // remove to run test
+		t.Skip("skip test") // remove to run test
 
 		threadId := "86de033f-49a6-44ce-97fc-4d3cca3865c4"
 		graphName := "agent"
@@ -219,15 +337,15 @@ func Test_langgraphgo_ThreadRunsAPIService(t *testing.T) {
 
 			inputIdFound = inputIdFound || messageId == inputId.String()
 			if inputIdFound && messageId != inputId.String() {
-				t.Logf("Message ID: %v\n", messageId)
-				t.Logf("Message Type: %v\n", messageType)
-				t.Logf("Message Name: %v\n", messageName)
-				t.Logf("Message Content: %v\n", messageContent)
+				fmt.Printf("Message ID: %v\n", messageId)
+				fmt.Printf("Message Type: %v\n", messageType)
+				fmt.Printf("Message Name: %v\n", messageName)
+				fmt.Printf("Message Content: %v\n", messageContent)
 
 				// if the message is a rag message and there are rag contexts, print them
 				if messageName == "rag" && messageRagContexts != nil {
 					if _messageRagContext, exists := messageRagContexts[inputId.String()]; exists {
-						t.Logf("Found inputId %s has rag contexts\n", inputId)
+						fmt.Printf("Found inputId %s has rag contexts\n", inputId)
 						messageRagContext, ok := _messageRagContext.([]interface{})
 						require.True(t, ok, "messageRagContext is not a []interface{}")
 						for _, documentItem := range messageRagContext {
@@ -247,19 +365,19 @@ func Test_langgraphgo_ThreadRunsAPIService(t *testing.T) {
 							documentPageContent, ok := document["page_content"].(string)
 							require.True(t, ok, "documentPageContent is not a string")
 
-							t.Logf("Document ID: %v\n", documentId)
-							t.Logf("Document Container: %v\n", documentContainer)
-							t.Logf("Document Filename: %v\n", documentFilename)
-							t.Logf("Document Page Number: %v\n", documentPageNumber)
-							t.Logf("Document Content Type: %v\n", documentContentType)
+							fmt.Printf("Document ID: %v\n", documentId)
+							fmt.Printf("Document Container: %v\n", documentContainer)
+							fmt.Printf("Document Filename: %v\n", documentFilename)
+							fmt.Printf("Document Page Number: %v\n", documentPageNumber)
+							fmt.Printf("Document Content Type: %v\n", documentContentType)
 							if len(documentPageContent) > 20 {
-								t.Logf("Document Page Content: %v\n", documentPageContent[:20])
+								fmt.Printf("Document Page Content: %v\n", documentPageContent[:20])
 							} else {
-								t.Logf("Document Page Content: %v\n", documentPageContent)
+								fmt.Printf("Document Page Content: %v\n", documentPageContent)
 							}
 						}
 					} else {
-						t.Logf("inputId %s not found in Rag contexts", inputId)
+						fmt.Printf("inputId %s not found in Rag contexts", inputId)
 					}
 				}
 
@@ -267,9 +385,89 @@ func Test_langgraphgo_ThreadRunsAPIService(t *testing.T) {
 
 		}
 
-		t.Logf("Input ID: %v\n", inputId)
+		fmt.Printf("Input ID: %v\n", inputId)
 		// fmt.Printf("Response: %v", resp)
 
 	})
 
+}
+
+func processEventMessages(t *testing.T, responseMap map[string]interface{}, inputId uuid.UUID) {
+	messages, ok := responseMap["messages"].([]interface{})
+	require.True(t, ok, "messages is not a []interface{}")
+	inputIdFound := false
+
+	var messageRagContexts map[string]interface{} = nil
+	if ragContextsItem, exists := responseMap["rag_contexts"]; exists {
+		_messageRagContexts, ok := ragContextsItem.(map[string]interface{})
+		require.True(t, ok, "rag_contexts is not a map[string]interface{}")
+		messageRagContexts = _messageRagContexts
+
+	}
+
+	for _, messageItem := range messages {
+		message, ok := messageItem.(map[string]interface{})
+		require.True(t, ok, "message is not a map[string]interface{}")
+
+		messageId, ok := message["id"].(string)
+		require.True(t, ok, "messageId is not a string")
+		messageType, ok := message["type"].(string)
+		require.True(t, ok, "messageType is not a string")
+		messageContent, ok := message["content"].(string)
+		require.True(t, ok, "messageContent is not a string")
+
+		// if the key "name" does not exist or the value under "name" is not a string, the type assertion will return
+		// the zero value of the target type (an empty string in this case) without triggering a runtime error.
+		// The error (the boolean value) is ignored because it’s assigned to the blank identifier (_).
+		messageName, _ := message["name"].(string)
+
+		inputIdFound = inputIdFound || messageId == inputId.String()
+		if inputIdFound && messageId != inputId.String() {
+			fmt.Printf("Message ID: %v\n", messageId)
+			fmt.Printf("Message Type: %v\n", messageType)
+			fmt.Printf("Message Name: %v\n", messageName)
+			fmt.Printf("Message Content: %v\n", messageContent)
+
+			// if the message is a rag message and there are rag contexts, print them
+			if messageName == "rag" && messageRagContexts != nil {
+				if _messageRagContext, exists := messageRagContexts[inputId.String()]; exists {
+					fmt.Printf("Found inputId %s has rag contexts\n", inputId)
+					messageRagContext, ok := _messageRagContext.([]interface{})
+					require.True(t, ok, "messageRagContext is not a []interface{}")
+					for _, documentItem := range messageRagContext {
+						document := documentItem.(map[string]interface{})
+						metadata, ok := document["metadata"].(map[string]interface{})
+						require.True(t, ok, "metadata is not a map[string]interface{}")
+						documentId, ok := metadata["id"].(string)
+						require.True(t, ok, "documentId is not a string")
+						documentContainer, ok := metadata["container"].(string)
+						require.True(t, ok, "documentContainer is not a string")
+						documentFilename, ok := metadata["filename"].(string)
+						require.True(t, ok, "documentFilename is not a string")
+						documentPageNumber, ok := metadata["page_number"].(float64)
+						require.True(t, ok, "documentPageNumber is not a float64")
+						documentContentType, ok := metadata["content_type"].(string)
+						require.True(t, ok, "documentContentType is not a string")
+						documentPageContent, ok := document["page_content"].(string)
+						require.True(t, ok, "documentPageContent is not a string")
+
+						fmt.Printf("Document ID: %v\n", documentId)
+						fmt.Printf("Document Container: %v\n", documentContainer)
+						fmt.Printf("Document Filename: %v\n", documentFilename)
+						fmt.Printf("Document Page Number: %v\n", documentPageNumber)
+						fmt.Printf("Document Content Type: %v\n", documentContentType)
+						if len(documentPageContent) > 20 {
+							fmt.Printf("Document Page Content: %v\n", documentPageContent[:20])
+						} else {
+							fmt.Printf("Document Page Content: %v\n", documentPageContent)
+						}
+					}
+				} else {
+					fmt.Printf("inputId %s not found in Rag contexts", inputId)
+				}
+			}
+
+		}
+
+	}
 }
