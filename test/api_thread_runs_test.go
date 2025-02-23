@@ -146,6 +146,7 @@ func Test_langgraphgo_ThreadRunsAPIService(t *testing.T) {
 		threadId := "86de033f-49a6-44ce-97fc-4d3cca3865c4"
 		graphName := "agent"
 		inputId := uuid.New()
+		// inputtext := "Cual es mi nombre?"
 		// inputtext := "Que hora es?"
 		// inputtext := "Cuál es la temperatura en  NYC?"
 		// inputtext := "Cuál es la temperatura en  San Francisco?"
@@ -162,6 +163,7 @@ func Test_langgraphgo_ThreadRunsAPIService(t *testing.T) {
 					"id":      inputId.String(),
 					"content": inputtext,
 					"type":    "human",
+					"name":    "Harold", // this is a test to see if the name is used
 				},
 			},
 		}
@@ -203,58 +205,84 @@ func Test_langgraphgo_ThreadRunsAPIService(t *testing.T) {
 				t.Fail()
 			}
 
-			if event.Type == "metadata" {
-				eventData, _ := eventDataI.(map[string]interface{})
-				runId, _ := eventData["run_id"].(string)
-				attempt, _ := eventData["attempt"].(int)
-				fmt.Printf("Run ID: %v\n", runId)
-				fmt.Printf("Attempt: %v\n", attempt)
+			sseEvent, err := langgraphgo.ParseSSEEvent(event.Type, event.Data)
+			if err != nil {
+				fmt.Printf("Error parsing event data: %s\n", err)
+				t.Fail()
 			}
+
+			if event.Type == "metadata" {
+				fmt.Printf("Run ID: %v\n", sseEvent.Metadata.RunID)
+				fmt.Printf("Attempt: %v\n", sseEvent.Metadata.Attempt)
+			}
+
 			if event.Type == "messages/metadata" {
-				eventData, _ := eventDataI.(map[string]interface{})
-				for key, value := range eventData {
-					// eventMessagesMetadata = append(eventMessagesMetadata, key)
-					valueI, _ := value.(map[string]interface{})
-					metadataI, _ := valueI["metadata"].(map[string]interface{})
-					langgraphNode, _ := metadataI["langgraph_node"].(string)
-					// currentLanggraphNode = _currentLanggraphNode
-					eventMessagesMetadata[key] = langgraphNode
-					fmt.Printf("Metadata for node: %v\n", langgraphNode)
+				for key, value := range *sseEvent.MessagesMetadata {
+					eventMessagesMetadata[key] = value.Metadata.LanggraphNode
+					fmt.Printf("Metadata for node: %v %v\n", key, value.Metadata.LanggraphNode)
 				}
 			}
+
 			if event.Type == "messages/partial" {
-				eventData, _ := eventDataI.([]interface{})
-				for _, value := range eventData {
-					valueI, _ := value.(map[string]interface{})
-					id, _ := valueI["id"].(string)
-					role := eventMessagesMetadata[id]
+				for _, value := range *sseEvent.MessagesPartial {
+					role := eventMessagesMetadata[*value.ID]
 					switch role {
-					case "generate", "creditofull":
-						if content, ok := valueI["content"].(string); ok {
-							fmt.Printf("Partial content of %v: %v\n", role, content)
-						}
+					case "generate", "creditofull", "agent":
+						fmt.Printf("Partial content of %v: %v\n", role, value.Content)
 					default:
 						fmt.Print(".")
 					}
 				}
 			}
+
 			if event.Type == "updates" {
 				fmt.Print("Update\n")
 			}
+
 			if event.Type == "values" {
 				fmt.Print("Values:\n")
-				responseMap, _ := eventDataI.(map[string]interface{})
+				inputIdFound := false
 
-				processEventMessages(t, responseMap, inputId)
+				var messageRagContexts = sseEvent.Values.RagContexts
 
-				_ = cancelMyContext
-				// eventDataNext, _ := responseMap["next"].(string)
-				// if eventDataNext == "__end__" {
-				// 	// unsubscribe()
-				// 	cancelMyContext()
-				// }
+				for _, message := range sseEvent.Values.Messages {
+
+					inputIdFound = inputIdFound || *message.ID == inputId.String()
+					if inputIdFound && *message.ID != inputId.String() {
+						fmt.Printf("Message ID: %v\n", *message.ID)
+						fmt.Printf("Message Type: %v\n", message.Type)
+						if message.Name != nil {
+							fmt.Printf("Message Name: %v\n", *message.Name)
+						}
+						fmt.Printf("Message Content: %v\n", message.Content)
+
+						// if the message is a rag message and there are rag contexts, print them
+						if message.Name != nil && *message.Name == "rag" && messageRagContexts != nil {
+							if messageRagContext, exists := messageRagContexts[*message.ID]; exists {
+								for _, document := range messageRagContext {
+
+									fmt.Printf("Document ID: %v\n", document.ID)
+									fmt.Printf("Document Container: %v\n", document.Metadata.Container)
+									fmt.Printf("Document Filename: %v\n", document.Metadata.Filename)
+									fmt.Printf("Document Page Number: %v\n", document.Metadata.PageNumber)
+									fmt.Printf("Document Content Type: %v\n", document.Metadata.ContentType)
+									if len(document.PageContent) > 50 {
+										fmt.Printf("Document Page Content: %v[...]\n", document.PageContent[:50])
+									} else {
+										fmt.Printf("Document Page Content: %v\n", document.PageContent)
+									}
+								}
+							} else {
+								fmt.Printf("inputId %s not found in Rag contexts", inputId)
+							}
+						}
+
+					}
+
+				}
 			}
 		})
+		_ = cancelMyContext
 		_ = unsubscribe
 
 		if err := conn.Connect(); err != nil {
