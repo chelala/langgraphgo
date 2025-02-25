@@ -21,7 +21,7 @@ import (
 )
 
 // SSE Version for api_thread_runs.go L1016
-func (r ApiStreamRunThreadsThreadIdRunsStreamPostRequest) CreateSSEConnection() (*sse.Connection, error) {
+func (r ApiStreamRunThreadsThreadIdRunsStreamPostRequest) CreateSSEConnection() (*http.Request, *sse.Connection, error) {
 	return r.ApiService.StreamRunThreadsThreadIdRunsStreamPostSSEConnect(r)
 }
 
@@ -29,7 +29,7 @@ func (r ApiStreamRunThreadsThreadIdRunsStreamPostRequest) CreateSSEConnection() 
 // Execute executes the request
 //
 //	@return string
-func (a *ThreadRunsAPIService) StreamRunThreadsThreadIdRunsStreamPostSSEConnect(r ApiStreamRunThreadsThreadIdRunsStreamPostRequest) (*sse.Connection, error) {
+func (a *ThreadRunsAPIService) StreamRunThreadsThreadIdRunsStreamPostSSEConnect(r ApiStreamRunThreadsThreadIdRunsStreamPostRequest) (*http.Request, *sse.Connection, error) {
 	var (
 		localVarHTTPMethod = http.MethodPost
 		localVarPostBody   interface{}
@@ -38,7 +38,7 @@ func (a *ThreadRunsAPIService) StreamRunThreadsThreadIdRunsStreamPostSSEConnect(
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ThreadRunsAPIService.StreamRunThreadsThreadIdRunsStreamPost")
 	if err != nil {
-		return nil, &GenericOpenAPIError{error: err.Error()}
+		return nil, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
 	localVarPath := localBasePath + "/threads/{thread_id}/runs/stream"
@@ -48,7 +48,7 @@ func (a *ThreadRunsAPIService) StreamRunThreadsThreadIdRunsStreamPostSSEConnect(
 	localVarQueryParams := url.Values{}
 	localVarFormParams := url.Values{}
 	if r.runCreateStateful == nil {
-		return nil, reportError("runCreateStateful is required and must be specified")
+		return nil, nil, reportError("runCreateStateful is required and must be specified")
 	}
 
 	// to determine the Content-Type header
@@ -72,7 +72,7 @@ func (a *ThreadRunsAPIService) StreamRunThreadsThreadIdRunsStreamPostSSEConnect(
 	localVarPostBody = r.runCreateStateful
 	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	client := sse.Client{
@@ -82,7 +82,7 @@ func (a *ThreadRunsAPIService) StreamRunThreadsThreadIdRunsStreamPostSSEConnect(
 	}
 	conn := client.NewConnection(req)
 
-	return conn, nil
+	return req, conn, nil
 
 }
 

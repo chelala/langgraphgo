@@ -184,7 +184,8 @@ func Test_langgraphgo_ThreadRunsAPIService(t *testing.T) {
 		})
 
 		// resp, httpRes, err := threadRunsStreamReq.Execute()
-		conn, err := threadRunsStreamReq.CreateSSEConnection()
+		req, conn, err := threadRunsStreamReq.CreateSSEConnection()
+		_ = req
 		if err != nil {
 			fmt.Printf("Error creating SSE Connection: %s", err)
 		}
