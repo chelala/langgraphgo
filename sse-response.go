@@ -9,7 +9,6 @@ package langgraphgo
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 )
 
@@ -202,7 +201,8 @@ func ParseSSEEvent(eventType, data string) (*SSEEvent, error) {
 	default:
 		// You could either treat unknown Types as an error or just store
 		// the raw JSON for debugging.
-		return nil, errors.New("unknown SSE event type: " + eventType)
+		// return nil, errors.New("unknown SSE event type: " + eventType)
+		return nil, nil
 	}
 
 	return e, nil
