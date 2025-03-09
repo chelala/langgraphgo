@@ -49,7 +49,7 @@ type MessageMetadata struct {
 	LanggraphStep          int                    `json:"langgraph_step"`
 	LanggraphNode          string                 `json:"langgraph_node"`
 	LanggraphTriggers      []string               `json:"langgraph_triggers"`
-	LanggraphPath          []string               `json:"langgraph_path"`
+	LanggraphPath          []any                  `json:"langgraph_path"`
 	LanggraphCheckpointNs  string                 `json:"langgraph_checkpoint_ns"`
 	LSProvider             string                 `json:"ls_provider"`
 	LSModelName            string                 `json:"ls_model_name"`
